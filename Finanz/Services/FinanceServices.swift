@@ -72,6 +72,14 @@ enum ExpenseService {
         try await APIClient.shared.sendIgnoringResponse(Endpoint(path: "/expenses/\(id)", method: .delete))
     }
 
+    /// Sitios donde ya has gastado en esa categoría, los más usados primero.
+    static func frequent(category: String, limit: Int = 8) async throws -> [FrequentExpense] {
+        try await APIClient.shared.send(
+            Endpoint(path: "/expenses/frequent",
+                     query: ["category": category, "limit": "\(limit)"])
+        )
+    }
+
     // MARK: Recurrentes
 
     static func suggestions(month: Int, year: Int) async throws -> [RecurringSuggestion] {

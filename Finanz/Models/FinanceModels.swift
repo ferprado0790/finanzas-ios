@@ -57,6 +57,20 @@ struct Expense: Codable, Identifiable, Hashable {
     let recurringActive: Bool
 }
 
+// MARK: - Alta rápida
+
+/// `FrequentExpenseDto` — sitio donde ya has gastado, para no teclearlo otra vez.
+struct FrequentExpense: Decodable, Identifiable, Hashable {
+    var id: String { description }
+    let description: String
+    let category: String
+    /// Importe de la última vez: el mejor punto de partida.
+    let lastAmount: Decimal
+    let averageAmount: Decimal
+    let timesUsed: Int
+    let lastDate: Date
+}
+
 // MARK: - Gastos recurrentes
 
 /// `RecurringSuggestionDto` — un fijo que toca este mes y no está apuntado.

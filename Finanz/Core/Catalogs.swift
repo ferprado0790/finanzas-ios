@@ -49,4 +49,12 @@ enum Catalogs {
     /// Categorías del comprobador de presupuesto (BudgetCheckPage.jsx)
     static let budgetCategories = ["Alimentación", "Ocio", "Ropa", "Tecnología", "Viajes",
                                    "Salud", "Educación", "Restaurantes", "Otro"]
+
+    /// Atajos del alta rápida de comida preparada. Son solo un punto de partida:
+    /// los sitios que uses de verdad los ofrece el backend en `expenses/frequent`.
+    static let foodPlaces = ["Restaurante", "Bar / cafetería", "Comida para llevar",
+                             "Glovo", "Just Eat", "Uber Eats", "Deliveroo"]
+
+    /// Categoría a la que va la comida preparada.
+    static let foodCategory = "Restaurantes"
 }

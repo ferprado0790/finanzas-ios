@@ -6,6 +6,7 @@ struct ExpenseView: View {
 
     @State private var vm = ExpenseViewModel()
     @State private var showForm = false
+    @State private var showQuickFood = false
     @State private var editingExpense: Expense?
 
     var body: some View {
@@ -45,6 +46,19 @@ struct ExpenseView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 4)
+
+                    Button {
+                        showQuickFood = true
+                    } label: {
+                        Text("🍽️ Comida preparada (rápido)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundStyle(Theme.warning)
+                            .background(Theme.warning.opacity(0.13))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
@@ -65,6 +79,12 @@ struct ExpenseView: View {
                     await vm.load()
                     await vm.loadSuggestions()
                 }
+            }
+        }
+        .sheet(isPresented: $showQuickFood) {
+            QuickFoodView { saved in
+                vm.upsert(saved)
+                Task { await vm.load() }
             }
         }
     }

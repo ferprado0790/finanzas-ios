@@ -8,6 +8,7 @@ struct DashboardView: View {
     @State private var vm = DashboardViewModel()
     @State private var showIncomeForm = false
     @State private var showExpenseForm = false
+    @State private var showQuickFood = false
     @State private var showSettings = false
 
     var body: some View {
@@ -58,6 +59,9 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showExpenseForm) {
             ExpenseFormView { _ in Task { await vm.load() } }
+        }
+        .sheet(isPresented: $showQuickFood) {
+            QuickFoodView { _ in Task { await vm.load() } }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -139,10 +143,13 @@ struct DashboardView: View {
             QuickActionButton(icon: "arrow.down", title: "Añadir gasto", color: Theme.danger) {
                 showExpenseForm = true
             }
+            QuickActionButton(icon: "fork.knife", title: "Comida preparada", color: Theme.warning) {
+                showQuickFood = true
+            }
             NavigationLink {
                 AnalysisView()
             } label: {
-                QuickActionLabel(icon: "chart.pie.fill", title: "Ver análisis", color: Theme.warning)
+                QuickActionLabel(icon: "chart.pie.fill", title: "Ver análisis", color: Theme.info)
             }
             .buttonStyle(.plain)
 
