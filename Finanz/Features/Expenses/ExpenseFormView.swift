@@ -18,6 +18,7 @@ struct ExpenseFormView: View {
     @State private var replicateMonths = 0
     @State private var isSaving = false
     @State private var errorMessage = ""
+    @State private var probe = SpendAlertProbe()
 
     private var isValid: Bool {
         !descriptionText.trimmed.isEmpty && (Decimal.parse(amountText) ?? 0) > 0
@@ -83,6 +84,12 @@ struct ExpenseFormView: View {
                     TextField("Notas adicionales…", text: $notes)
                         .textFieldStyle(DarkTextFieldStyle())
 
+                    // Aviso en vivo: si estaba previsto y si hay presupuesto.
+                    // Solo informa; nunca impide guardar.
+                    if let alert = probe.alert {
+                        SpendAlertBanner(alert: alert)
+                    }
+
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
                             .font(.system(size: 13))
@@ -111,6 +118,12 @@ struct ExpenseFormView: View {
             }
         }
         .onAppear(perform: preload)
+        .task(id: "\(amountText)|\(descriptionText)|\(category)|\(date.timeIntervalSince1970)") {
+            await probe.refresh(amount: Decimal.parse(amountText),
+                                description: descriptionText,
+                                category: category,
+                                date: date)
+        }
     }
 
     private var categoryGrid: some View {

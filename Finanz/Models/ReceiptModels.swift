@@ -66,6 +66,31 @@ struct ReceiptItemRequest: Encodable {
     var unitPrice: Decimal?
 }
 
+/// `ShoppingCheckDto` — repaso de la lista de la compra al cerrar un ticket.
+struct ShoppingCheck: Decodable, Hashable {
+    let listHadItems: Bool
+    let complete: Bool
+    let totalPending: Int
+    let foundCount: Int
+    let coveragePct: Int
+    let found: [String]
+    let missing: [String]
+    let title: String
+    let message: String
+}
+
+/// `ReceiptConfirmationDto` — lo que devuelve confirmar una factura.
+struct ReceiptConfirmation: Decodable {
+    let receipt: Receipt
+    let shoppingCheck: ShoppingCheck
+}
+
+/// `DeviceTokenRequest` — dispositivo donde recibir los avisos.
+struct DeviceTokenRequest: Encodable {
+    let token: String
+    var platform: String = "IOS"
+}
+
 /// `ReceiptSummaryDto`
 struct ReceiptSummary: Codable, Hashable {
     let month: Int

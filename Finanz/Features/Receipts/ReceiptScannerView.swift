@@ -66,13 +66,21 @@ final class ReceiptScannerViewModel {
         await run("Guardando…") { try await ReceiptService.update(id: id, request) }
     }
 
-    /// Cierra el ticket: a partir de aquí cuenta como gasto del mes.
+    /// Repaso de la lista de la compra, disponible tras confirmar.
+    private(set) var shoppingCheck: ShoppingCheck?
+
+    /**
+     * Cierra el ticket: a partir de aquí cuenta como gasto del mes. De paso el
+     * backend repasa la lista de la compra y marca lo que ha aparecido.
+     */
     func confirm() async -> Bool {
         guard let id = receipt?.id else { return false }
         busyMessage = "Añadiendo a los gastos…"
         defer { busyMessage = nil }
         do {
-            receipt = try await ReceiptService.confirm(id: id)
+            let result = try await ReceiptService.confirm(id: id)
+            receipt = result.receipt
+            shoppingCheck = result.shoppingCheck
             return true
         } catch {
             report(error)
@@ -134,7 +142,11 @@ struct ReceiptScannerView: View {
                         ErrorBanner(message: errorMessage)
                     }
 
-                    if let receipt = vm.receipt {
+                    if let check = vm.shoppingCheck, let receipt = vm.receipt {
+                        // Ya confirmado: se enseña el repaso de la lista, que es
+                        // la razón de ser del escaneo.
+                        confirmationSummary(receipt: receipt, check: check)
+                    } else if let receipt = vm.receipt {
                         summary(receipt)
                         if !manual { photos(receipt) }
                         items(receipt)
@@ -185,6 +197,69 @@ struct ReceiptScannerView: View {
     }
 
     // MARK: - Bloques
+
+    /// Lo que se ve al cerrar el ticket: el gasto apuntado y el repaso de la
+    /// lista. Lo que apareció en el ticket ya queda marcado como conseguido.
+    private func confirmationSummary(receipt: Receipt, check: ShoppingCheck) -> some View {
+        let accent: Color = (!check.listHadItems || check.complete) ? Theme.success : Theme.warning
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Card {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Gasto apuntado")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textMuted)
+                    Text(receipt.total.currencyString)
+                        .font(.display(30))
+                        .foregroundStyle(Theme.textPrimary)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+            }
+
+            Card(borderColor: accent.opacity(0.35)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(check.title)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(accent)
+                    Text(check.message)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textBody)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if check.listHadItems {
+                        ProgressBar(value: Double(check.coveragePct) / 100.0, color: accent)
+                        Text("\(check.foundCount) de \(check.totalPending) artículos")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.textMuted)
+                    }
+
+                    if !check.missing.isEmpty {
+                        SectionLabel(text: "Se te ha quedado")
+                        ForEach(check.missing, id: \.self) { name in
+                            Text("· \(name)")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Theme.warning)
+                        }
+                    }
+
+                    if !check.found.isEmpty {
+                        SectionLabel(text: "Marcado como conseguido")
+                        ForEach(check.found, id: \.self) { name in
+                            Text("✓ \(name)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                }
+            }
+
+            PrimaryButton(title: "Listo") {
+                onFinished()
+                dismiss()
+            }
+        }
+    }
 
     private func summary(_ receipt: Receipt) -> some View {
         Card {
@@ -393,12 +468,9 @@ struct ReceiptScannerView: View {
             PrimaryButton(title: "Añadir a los gastos de \(monthName(of: receipt.date))",
                           isLoading: vm.busyMessage == "Añadiendo a los gastos…",
                           isEnabled: vm.busyMessage == nil && receipt.total > 0) {
-                Task {
-                    if await vm.confirm() {
-                        onFinished()
-                        dismiss()
-                    }
-                }
+                // Al confirmar no se cierra: la vista pasa a enseñar el repaso
+                // de la lista de la compra.
+                Task { _ = await vm.confirm() }
             }
 
             Button("Descartar el ticket", role: .destructive) {

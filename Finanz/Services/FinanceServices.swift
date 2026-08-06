@@ -148,6 +148,13 @@ enum BudgetService {
         )
     }
 
+    /// Aviso mientras se escribe el importe: ¿estaba previsto y hay presupuesto?
+    static func spendAlert(_ request: SpendAlertRequest) async throws -> SpendAlert {
+        try await APIClient.shared.send(
+            Endpoint.json("/budget/spend-alert", method: .post, body: request)
+        )
+    }
+
     static func report(fromMonth: Int, fromYear: Int,
                        toMonth: Int, toYear: Int) async throws -> PeriodReport {
         try await APIClient.shared.send(
@@ -247,8 +254,8 @@ enum ReceiptService {
         )
     }
 
-    /// Cierra el ticket: a partir de aquí cuenta como gasto del mes.
-    static func confirm(id: Int64) async throws -> Receipt {
+    /// Cierra el ticket y devuelve además el repaso de la lista de la compra.
+    static func confirm(id: Int64) async throws -> ReceiptConfirmation {
         try await APIClient.shared.send(Endpoint(path: "/receipts/\(id)/confirm", method: .post))
     }
 
@@ -258,5 +265,16 @@ enum ReceiptService {
 
     static func delete(id: Int64) async throws {
         try await APIClient.shared.sendIgnoringResponse(Endpoint(path: "/receipts/\(id)", method: .delete))
+    }
+}
+
+// MARK: - Avisos push
+
+enum DeviceService {
+    /// Se llama en cada arranque con sesión: el sistema rota el token.
+    static func register(token: String) async throws {
+        try await APIClient.shared.sendIgnoringResponse(
+            Endpoint.json("/devices", method: .post, body: DeviceTokenRequest(token: token))
+        )
     }
 }

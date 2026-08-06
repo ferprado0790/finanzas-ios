@@ -17,6 +17,7 @@ struct QuickFoodView: View {
     @State private var frequent: [FrequentExpense] = []
     @State private var isSaving = false
     @State private var errorMessage = ""
+    @State private var probe = SpendAlertProbe()
 
     private var amount: Decimal? {
         guard let value = Decimal.parse(amountText), value > 0 else { return nil }
@@ -64,6 +65,11 @@ struct QuickFoodView: View {
                         .labelsHidden()
                         .environment(\.locale, AppConfig.locale)
 
+                    // Aviso en vivo: si estaba previsto y si hay presupuesto.
+                    if let alert = probe.alert {
+                        SpendAlertBanner(alert: alert)
+                    }
+
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
                             .font(.system(size: 13))
@@ -94,6 +100,12 @@ struct QuickFoodView: View {
         .task {
             // Si falla, quedan los atajos fijos: no merece un mensaje de error.
             frequent = (try? await ExpenseService.frequent(category: Catalogs.foodCategory)) ?? []
+        }
+        .task(id: "\(amountText)|\(place)|\(date.timeIntervalSince1970)") {
+            await probe.refresh(amount: amount,
+                                description: place,
+                                category: Catalogs.foodCategory,
+                                date: date)
         }
     }
 

@@ -183,6 +183,36 @@ struct CheckExpenseResult: Decodable, Hashable {
     let suggestions: [String]?
 }
 
+/// `SpendAlertRequest` — gasto que se está a punto de apuntar.
+struct SpendAlertRequest: Encodable {
+    var description: String?
+    let amount: Decimal
+    var category: String?
+    var date: Date?
+}
+
+/// `SpendAlertDto` — si el gasto estaba previsto y si hay presupuesto.
+/// Nunca bloquea el alta; solo informa.
+struct SpendAlert: Decodable, Hashable {
+    let level: String                   // OK | CAUTION | WARNING
+    let planned: Bool
+    let plannedReason: String?          // RECURRING | SHOPPING_LIST | CATEGORY_BUDGET
+    let plannedDetail: String?
+    let matchedShoppingItemId: Int64?
+    let title: String
+    let message: String
+    let suggestions: [String]?
+    let canAfford: Bool
+    let balanceBefore: Decimal
+    let balanceAfter: Decimal
+    let savingsRateAfter: Int
+    let unplannedSpentThisMonth: Decimal
+    let categoryLimit: Decimal?
+    let categorySpentBefore: Decimal
+    let categorySpentAfter: Decimal
+    let categoryLimitExceeded: Bool
+}
+
 /// `PeriodReportDto`
 struct PeriodReport: Decodable, Hashable {
     let totalIncome: Decimal
