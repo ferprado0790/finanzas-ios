@@ -50,6 +50,16 @@ enum AuthService {
         try await client.sendIgnoringResponse(endpoint)
     }
 
+    /// Logins sociales con credenciales configuradas en el backend.
+    ///
+    /// Un botón sin configurar acaba en una pantalla de error del proveedor que
+    /// no explica nada, así que solo se pintan los que salgan de aquí.
+    static func availableProviders() async throws -> [AvailableAuthProvider] {
+        try await APIClient.shared.send(
+            Endpoint(path: "/auth/providers", requiresAuth: false)
+        )
+    }
+
     /// URL que abre el flujo OAuth2 del backend en `ASWebAuthenticationSession`.
     ///
     /// `client=mobile` le dice al backend que, al terminar, redirija al deep

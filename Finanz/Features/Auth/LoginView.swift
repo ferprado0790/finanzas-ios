@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Puerto de `LoginPage.jsx`: pestañas Entrar / Registro, login con email y
-/// contraseña, y acceso con Google o GitHub vía OAuth2 del backend.
+/// contraseña, y acceso con Google, Facebook o X vía OAuth2 del backend.
 struct LoginView: View {
 
     enum Mode: String, CaseIterable {
@@ -20,6 +20,8 @@ struct LoginView: View {
     @State private var errorMessage = ""
     @State private var isLoading = false
     @State private var showSettings = false
+    /// Logins sociales configurados en el backend. Vacío = no se pinta ninguno.
+    @State private var availableProviders: [AvailableAuthProvider] = []
 
     private var canSubmit: Bool {
         guard !email.trimmingCharacters(in: .whitespaces).isEmpty, password.count >= 6 else { return false }
@@ -117,10 +119,30 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
 
-                divider
-                oauthButton(.google)
-                oauthButton(.github)
+                // Solo se pintan los logins que el backend tiene configurados.
+                if !availableProviders.isEmpty {
+                    divider
+                    ForEach(availableProviders) { available in
+                        if let provider = available.provider {
+                            oauthButton(provider, label: available.label)
+                        }
+                    }
+                    if availableProviders.contains(where: { !$0.providesEmail }) {
+                        Text("""
+                             X no comparte tu correo, así que esas cuentas no podrán recuperar \
+                             la contraseña por email.
+                             """)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textFaint)
+                            .multilineTextAlignment(.center)
+                    }
+                }
             }
+        }
+        .task {
+            // Un fallo no se enseña: el acceso con email y contraseña tiene que
+            // seguir funcionando igual.
+            availableProviders = (try? await AuthService.availableProviders()) ?? []
         }
     }
 
@@ -162,13 +184,13 @@ struct LoginView: View {
         .padding(.vertical, 6)
     }
 
-    private func oauthButton(_ provider: OAuthProvider) -> some View {
+    private func oauthButton(_ provider: OAuthProvider, label: String) -> some View {
         Button {
             Task { await signInWithOAuth(provider) }
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: provider == .google ? "globe" : "chevron.left.forwardslash.chevron.right")
-                Text(provider.title)
+                Image(systemName: provider.symbol)
+                Text(label)
                     .font(.system(size: 15, weight: .medium))
             }
             .frame(maxWidth: .infinity)

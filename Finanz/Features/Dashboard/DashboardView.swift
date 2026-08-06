@@ -9,6 +9,7 @@ struct DashboardView: View {
     @State private var showIncomeForm = false
     @State private var showExpenseForm = false
     @State private var showQuickFood = false
+    @State private var showBillSplit = false
     @State private var showSettings = false
 
     var body: some View {
@@ -62,6 +63,9 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showQuickFood) {
             QuickFoodView { _ in Task { await vm.load() } }
+        }
+        .sheet(isPresented: $showBillSplit) {
+            BillSplitView { Task { await vm.load() } }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -153,6 +157,10 @@ struct DashboardView: View {
             }
             .buttonStyle(.plain)
 
+            QuickActionButton(icon: "person.2.fill", title: "Dividir cuenta",
+                              color: Theme.primaryLight) {
+                showBillSplit = true
+            }
             NavigationLink {
                 ReportView()
             } label: {

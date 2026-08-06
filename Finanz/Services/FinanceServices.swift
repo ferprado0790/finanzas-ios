@@ -268,6 +268,91 @@ enum ReceiptService {
     }
 }
 
+// MARK: - Divisor de cuenta
+
+/// Los comensales son nombres sueltos: no hace falta que tengan cuenta.
+enum BillSplitService {
+    static func all(month: Int, year: Int) async throws -> [BillSplit] {
+        try await APIClient.shared.send(
+            Endpoint(path: "/bill-splits", query: ["month": "\(month)", "year": "\(year)"])
+        )
+    }
+
+    /// Cuentas en las que todavía te debe alguien.
+    static func open() async throws -> [BillSplit] {
+        try await APIClient.shared.send(Endpoint(path: "/bill-splits/open"))
+    }
+
+    static func get(id: Int64) async throws -> BillSplit {
+        try await APIClient.shared.send(Endpoint(path: "/bill-splits/\(id)"))
+    }
+
+    static func create(_ request: BillSplitRequest) async throws -> BillSplit {
+        try await APIClient.shared.send(Endpoint.json("/bill-splits", method: .post, body: request))
+    }
+
+    static func update(id: Int64, _ request: BillSplitRequest) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint.json("/bill-splits/\(id)", method: .put, body: request)
+        )
+    }
+
+    static func readPhoto(id: Int64, rawText: String) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint.json("/bill-splits/\(id)/photo", method: .post,
+                          body: BillOcrRequest(rawText: rawText))
+        )
+    }
+
+    static func addParticipant(id: Int64, name: String) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint.json("/bill-splits/\(id)/participants", method: .post,
+                          body: ParticipantRequest(name: name))
+        )
+    }
+
+    static func removeParticipant(id: Int64, participantId: Int64) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint(path: "/bill-splits/\(id)/participants/\(participantId)", method: .delete)
+        )
+    }
+
+    static func toggleSettled(id: Int64, participantId: Int64) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint(path: "/bill-splits/\(id)/participants/\(participantId)/settle", method: .patch)
+        )
+    }
+
+    static func addItem(id: Int64, _ request: BillItemRequest) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint.json("/bill-splits/\(id)/items", method: .post, body: request)
+        )
+    }
+
+    static func updateItem(id: Int64, itemId: Int64, _ request: BillItemRequest) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint.json("/bill-splits/\(id)/items/\(itemId)", method: .put, body: request)
+        )
+    }
+
+    static func deleteItem(id: Int64, itemId: Int64) async throws -> BillSplit {
+        try await APIClient.shared.send(
+            Endpoint(path: "/bill-splits/\(id)/items/\(itemId)", method: .delete)
+        )
+    }
+
+    /// Apunta tu parte como gasto. Solo la tuya.
+    static func confirm(id: Int64) async throws -> BillSplit {
+        try await APIClient.shared.send(Endpoint(path: "/bill-splits/\(id)/confirm", method: .post))
+    }
+
+    static func delete(id: Int64) async throws {
+        try await APIClient.shared.sendIgnoringResponse(
+            Endpoint(path: "/bill-splits/\(id)", method: .delete)
+        )
+    }
+}
+
 // MARK: - Avisos push
 
 enum DeviceService {
