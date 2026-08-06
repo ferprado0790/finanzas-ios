@@ -233,12 +233,26 @@ struct PeriodReport: Decodable, Hashable {
 struct ShoppingItem: Codable, Identifiable, Hashable {
     let id: Int64
     let name: String
+    /// Precio estimado, el que escribe el usuario.
     let price: Decimal?
+    /// Lo que costó de verdad la última vez, sacado del ticket escaneado.
+    let lastPaidPrice: Decimal?
     let purchased: Bool
+    /// Cada cuántos meses toca reponerlo. Nulo si es una compra suelta.
+    let recurrenceMonths: Int?
+    let lastPurchasedAt: Date?
+    let nextDueDate: Date?
+    /// Días que faltan para que vuelva; negativo si ya tocaba.
+    let daysUntilDue: Int?
+
+    /// Precio que merece la pena enseñar: manda lo que se pagó de verdad.
+    var effectivePrice: Decimal? { lastPaidPrice ?? price }
 }
 
 /// `ShoppingItemRequest`
 struct ShoppingItemRequest: Encodable {
     let name: String
     let price: Decimal?
+    /// 1 = todos los meses, 3 = cada tres… Nulo para compra suelta.
+    var recurrenceMonths: Int?
 }

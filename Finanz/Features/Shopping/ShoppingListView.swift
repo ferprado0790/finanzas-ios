@@ -49,6 +49,18 @@ final class ShoppingListViewModel {
         }
     }
 
+    /// Escucha los cambios mientras la pantalla esté abierta: lo que hagas
+    /// desde otro dispositivo, o al escanear un ticket, aparece aquí solo.
+    func observeChanges() async {
+        for await event in ShoppingListStream.events() {
+            if event.type == "DELETED" {
+                items.removeAll { $0.id == event.itemId }
+            } else if let item = event.item {
+                upsert(item)
+            }
+        }
+    }
+
     func toggle(_ item: ShoppingItem) async {
         do {
             let updated = try await ShoppingListService.togglePurchased(id: item.id)
@@ -134,6 +146,9 @@ struct ShoppingListView: View {
             .refreshable { await vm.load() }
         }
         .task { await vm.load() }
+        // Se corta sola al cerrar la pantalla, que es cuando SwiftUI cancela
+        // la tarea del `.task`.
+        .task { await vm.observeChanges() }
         .sheet(isPresented: $showForm) {
             ShoppingItemFormView(item: editingItem,
                                  onSaved: { vm.upsert($0) },
@@ -261,6 +276,20 @@ struct ShoppingListView: View {
         }
     }
 
+    /// Segunda línea de la fila: la periodicidad y, en lo ya conseguido,
+    /// cuándo vuelve. Nil si no hay nada que contar.
+    private static func subtitle(for item: ShoppingItem) -> String? {
+        guard let recurrence = Catalogs.restockLabel(item.recurrenceMonths) else { return nil }
+        guard item.purchased, let days = item.daysUntilDue else { return recurrence }
+
+        switch days {
+        case 1:          return "\(recurrence) · vuelve mañana"
+        case 0:          return "\(recurrence) · toca reponerlo"
+        case let d where d > 1:  return "\(recurrence) · vuelve en \(d) días"
+        default:         return "\(recurrence) · tocaba hace \(-days) días"
+        }
+    }
+
     private func row(_ item: ShoppingItem) -> some View {
         Card(padding: 12) {
             HStack(spacing: 10) {
@@ -285,18 +314,37 @@ struct ShoppingListView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(item.purchased ? "Desmarcar \(item.name)" : "Marcar \(item.name) como conseguido")
 
-                Text(item.name)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Theme.textBody)
-                    .strikethrough(item.purchased)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.textBody)
+                        .strikethrough(item.purchased)
+                        .lineLimit(1)
+                    if let subtitle = Self.subtitle(for: item) {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textFaint)
+                            .lineLimit(1)
+                    }
+                }
 
                 Spacer(minLength: 4)
 
-                if let price = item.price {
-                    Text(price.currencyString)
-                        .font(.display(14, weight: .semibold))
-                        .foregroundStyle(item.purchased ? Theme.success : Theme.primaryLight)
+                if let price = item.effectivePrice {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(price.currencyString)
+                            .font(.display(14, weight: .semibold))
+                            .foregroundStyle(item.purchased ? Theme.success : Theme.primaryLight)
+                        // Solo se aclara que es el precio real cuando difiere
+                        // del estimado: si no, es ruido.
+                        if let paid = item.lastPaidPrice, let estimated = item.price,
+                           paid != estimated {
+                            Text("pagado · est. \(estimated.currencyString)")
+                                .font(.system(size: 10))
+                                .foregroundStyle(Theme.textFaint)
+                                .lineLimit(1)
+                        }
+                    }
                 }
             }
             .opacity(item.purchased ? 0.6 : 1)
@@ -329,6 +377,7 @@ struct ShoppingItemFormView: View {
 
     @State private var name = ""
     @State private var priceText = ""
+    @State private var recurrenceMonths: Int?
     @State private var isSaving = false
     @State private var errorMessage = ""
 
@@ -340,10 +389,30 @@ struct ShoppingItemFormView: View {
                     TextField("Ej: Arroz", text: $name)
                         .textFieldStyle(DarkTextFieldStyle())
 
-                    FieldLabel(text: "Precio (€) — opcional")
+                    FieldLabel(text: "Precio estimado (€) — opcional")
                     TextField("0,00", text: $priceText)
                         .textFieldStyle(DarkTextFieldStyle())
                         .keyboardType(.decimalPad)
+                    if let paid = item?.lastPaidPrice {
+                        Text("La última vez costó \(paid.currencyString)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textFaint)
+                    }
+
+                    FieldLabel(text: "¿Cada cuánto lo compras?")
+                    Text("Al marcarlo como conseguido, vuelve solo a la lista cuando toque.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textFaint)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
+                              spacing: 8) {
+                        ForEach(Catalogs.restockOptions, id: \.label) { option in
+                            SelectableChip(title: option.label,
+                                           isSelected: recurrenceMonths == option.months,
+                                           accent: Theme.primaryLight) {
+                                recurrenceMonths = option.months
+                            }
+                        }
+                    }
 
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
@@ -384,6 +453,7 @@ struct ShoppingItemFormView: View {
             guard let item else { return }
             name = item.name
             if let price = item.price { priceText = "\(price)" }
+            recurrenceMonths = item.recurrenceMonths
         }
     }
 
@@ -392,7 +462,9 @@ struct ShoppingItemFormView: View {
         isSaving = true
         defer { isSaving = false }
 
-        let request = ShoppingItemRequest(name: name.trimmed, price: Decimal.parse(priceText))
+        let request = ShoppingItemRequest(name: name.trimmed,
+                                          price: Decimal.parse(priceText),
+                                          recurrenceMonths: recurrenceMonths)
         do {
             let saved: ShoppingItem
             if let item {

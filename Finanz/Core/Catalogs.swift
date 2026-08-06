@@ -57,4 +57,21 @@ enum Catalogs {
 
     /// Categoría a la que va la comida preparada.
     static let foodCategory = "Restaurantes"
+
+    /// Cada cuánto se repone un artículo de la lista. `nil` = compra suelta.
+    /// Al marcarlo como conseguido, vuelve solo a la lista cuando toque.
+    static let restockOptions: [(months: Int?, label: String)] = [
+        (nil, "Puntual"),
+        (1, "Cada mes"),
+        (2, "Cada 2 meses"),
+        (3, "Cada 3 meses"),
+        (6, "Cada 6 meses"),
+        (12, "Cada año")
+    ]
+
+    /// Etiqueta corta para la fila de la lista ("Cada 3 meses").
+    static func restockLabel(_ months: Int?) -> String? {
+        guard let months else { return nil }
+        return restockOptions.first { $0.months == months }?.label
+    }
 }
