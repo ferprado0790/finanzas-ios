@@ -40,21 +40,22 @@
 		</dict>
 	</array>
 
-	<!-- Permite HTTP en desarrollo contra localhost / red local.
-	     En producción usa HTTPS y elimina estas excepciones. -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
-	</dict>
+	<!--
+	  El backend se sirve por HTTPS en finanz.kerbero.uk, así que no hace falta
+	  ninguna excepción al transporte seguro: se deja la política por defecto de
+	  Apple, que exige TLS.
+
+	  Antes había una excepción para la red local, cuando el backend solo
+	  escuchaba por HTTP en 192.168.1.136. Si en algún momento hace falta
+	  desarrollar contra un backend local sin certificado, se añade de nuevo:
+
+	  <key>NSAppTransportSecurity</key>
+	  <dict>
+	      <key>NSAllowsLocalNetworking</key>
+	      <true/>
+	  </dict>
+	-->
+
 
 	<key>UILaunchScreen</key>
 	<dict/>

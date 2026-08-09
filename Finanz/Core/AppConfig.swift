@@ -3,12 +3,12 @@ import Foundation
 /// Configuración global de la app.
 ///
 /// La URL base se puede cambiar en tiempo de ejecución desde Ajustes, lo que
-/// permite apuntar al backend local (simulador), a un backend en la red local
-/// (dispositivo físico) o a un túnel/servidor remoto sin recompilar.
+/// permite apuntar a un backend local mientras se desarrolla sin recompilar.
 enum AppConfig {
 
-    /// Backend por defecto: Spring Boot escucha en el puerto 8090 (ver `application.yml`).
-    static let defaultBaseURL = "http://localhost:8090/api"
+    /// Backend público, servido por el túnel de Cloudflare con HTTPS. Funciona
+    /// igual en el simulador, en un iPhone por WiFi y con datos móviles.
+    static let defaultBaseURL = "https://finanz.kerbero.uk/api"
 
     /// Esquema URL que debe devolver el backend tras el login OAuth2.
     /// El backend redirige a `${FRONTEND_URL}?token=<jwt>`, así que basta con
@@ -41,9 +41,10 @@ enum AppConfig {
     }
 
     /// Tolera lo que se escribe a mano en Ajustes:
-    ///   `192.168.1.136:8081`        → `http://192.168.1.136:8081/api`
-    ///   `http://192.168.1.136:8081` → `http://192.168.1.136:8081/api`
-    ///   `http://.../api/`           → `http://.../api`
+    ///   `finanz.kerbero.uk`         → `https://finanz.kerbero.uk/api`
+    ///   `https://finanz.kerbero.uk` → `https://finanz.kerbero.uk/api`
+    ///   `https://.../api/`          → `https://.../api`
+    ///   `localhost:8090`            → `http://localhost:8090/api`
     ///
     /// Si la URL ya trae una ruta propia (un proxy inverso, por ejemplo), se
     /// respeta tal cual y no se le añade `/api`.
@@ -54,7 +55,9 @@ enum AppConfig {
 
         let lowercased = value.lowercased()
         if !lowercased.hasPrefix("http://") && !lowercased.hasPrefix("https://") {
-            value = "http://" + value
+            // Se asume https salvo que sea una dirección local, que en
+            // desarrollo va sin certificado.
+            value = (isLocalAddress(value) ? "http://" : "https://") + value
         }
 
         // Solo añadimos /api cuando se dio únicamente host:puerto.
@@ -63,6 +66,16 @@ enum AppConfig {
             value += "/api"
         }
         return value
+    }
+
+    /// Direcciones locales o del simulador: son las únicas que en desarrollo se
+    /// sirven sin TLS, así que a esas se les pone `http` y al resto `https`.
+    private static func isLocalAddress(_ hostAndPort: String) -> Bool {
+        let host = hostAndPort.split(separator: ":").first.map(String.init)?.lowercased() ?? ""
+        return host == "localhost"
+            || host.hasPrefix("192.168.")
+            || host.hasPrefix("10.")
+            || host.hasPrefix("127.")
     }
 
     /// Moneda y locale usados en toda la app (igual que la web: es-ES / EUR).

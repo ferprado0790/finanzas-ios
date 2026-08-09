@@ -22,6 +22,7 @@ struct LoginView: View {
     @State private var showSettings = false
     /// Logins sociales configurados en el backend. Vacío = no se pinta ninguno.
     @State private var availableProviders: [AvailableAuthProvider] = []
+    @State private var providersState: ProvidersState = .loading
 
     private var canSubmit: Bool {
         guard !email.trimmingCharacters(in: .whitespaces).isEmpty, password.count >= 6 else { return false }
@@ -136,15 +137,34 @@ struct LoginView: View {
                             .foregroundStyle(Theme.textFaint)
                             .multilineTextAlignment(.center)
                     }
+                } else if providersState != .loading {
+                    // Sin esto la ausencia de botones sería muda y no habría
+                    // forma de distinguir "sin configurar" de "servidor caído".
+                    Text(providersState == .unreachable
+                         ? "No se ha podido consultar al servidor los accesos con Google, Facebook o X."
+                         : "No hay ningún acceso con Google, Facebook o X configurado en el servidor.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textFaint)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
         .task {
-            // Un fallo no se enseña: el acceso con email y contraseña tiene que
-            // seguir funcionando igual.
-            availableProviders = (try? await AuthService.availableProviders()) ?? []
+            // El acceso con email y contraseña sigue funcionando pase lo que
+            // pase aquí: los botones sociales son un extra.
+            do {
+                availableProviders = try await AuthService.availableProviders()
+                providersState = .ready
+            } catch {
+                availableProviders = []
+                providersState = .unreachable
+            }
         }
     }
+
+    /// En qué punto está la consulta de logins sociales.
+    private enum ProvidersState { case loading, ready, unreachable }
 
     private var modePicker: some View {
         HStack(spacing: 4) {

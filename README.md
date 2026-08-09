@@ -53,16 +53,27 @@ Elige un simulador de iPhone y pulsa ⌘R.
 > Si tu Xcode es anterior a la versión 16, regenera el proyecto con XcodeGen:
 > `brew install xcodegen && cd IOS && xcodegen generate`.
 
-### 3. Apunta al backend correcto
+### 3. A qué backend apunta
+
+Por defecto, al servidor público: **`https://finanz.kerbero.uk/api`**. Funciona
+igual en el simulador, en un iPhone por Wi-Fi y con datos móviles.
+
+Solo hay que cambiarlo para desarrollar contra un backend local:
 
 | Dónde ejecutas | URL base |
 |---|---|
-| Simulador, backend en el mismo Mac | `http://localhost:8090/api` (por defecto) |
+| Producción (por defecto) | `https://finanz.kerbero.uk/api` |
+| Simulador, backend en el mismo Mac | `http://localhost:8090/api` |
 | iPhone físico en la misma Wi-Fi | `http://192.168.x.x:8090/api` (IP del Mac) |
-| Túnel (ngrok, Cloudflare…) | `https://tu-tunel/api` |
 
 La URL se cambia **sin recompilar**: icono ⚙️ en la pantalla de login, o
-Inicio → menú de perfil → Ajustes → Servidor.
+Inicio → menú de perfil → Ajustes → Servidor. Si escribes solo el host se le
+añade `/api`, y se asume `https` salvo que sea una dirección local.
+
+> **HTTP y App Transport Security**: el `Info.plist` ya no lleva excepciones,
+> así que iOS **exige TLS**. Para apuntar a un backend local sin certificado hay
+> que añadir de vuelta `NSAppTransportSecurity` → `NSAllowsLocalNetworking`
+> (está comentado en el propio archivo).
 
 ---
 
