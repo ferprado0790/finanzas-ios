@@ -39,6 +39,21 @@ enum JSONCoding {
         return f
     }()
 
+    /// `LocalDateTime` de Java: "2026-08-09T12:34:56.789" o sin milisegundos.
+    ///
+    /// Va aparte porque **no lleva zona horaria**, y `ISO8601DateFormatter` la
+    /// exige: sin estos dos formatos, cualquier campo de tipo `LocalDateTime`
+    /// del backend hace fallar la decodificación del objeto entero.
+    static let localDateTimeFormatters: [DateFormatter] = ["yyyy-MM-dd'T'HH:mm:ss.SSS",
+                                                           "yyyy-MM-dd'T'HH:mm:ss"].map { pattern in
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .iso8601)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current          // el backend habla en la hora del servidor
+        f.dateFormat = pattern
+        return f
+    }
+
     static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .custom { decoder in
@@ -47,6 +62,9 @@ enum JSONCoding {
             // Acepta "2025-06-01" y también ISO-8601 completo por si el backend cambia.
             if let date = dateFormatter.date(from: raw) { return date }
             if let date = ISO8601DateFormatter().date(from: raw) { return date }
+            for formatter in localDateTimeFormatters {
+                if let date = formatter.date(from: raw) { return date }
+            }
             throw DecodingError.dataCorruptedError(in: container,
                                                    debugDescription: "Fecha no reconocida: \(raw)")
         }

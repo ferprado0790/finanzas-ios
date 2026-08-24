@@ -52,6 +52,35 @@ struct SettingsView: View {
                         }
                     }
 
+                    NavigationLink {
+                        BankView()
+                    } label: {
+                        Card {
+                            HStack(spacing: 12) {
+                                Image(systemName: "building.columns.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Theme.primaryLight)
+                                    .frame(width: 36, height: 36)
+                                    .background(Theme.primary.opacity(0.13))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Mi banco")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(Theme.textPrimary)
+                                    Text("Que los pagos con tarjeta se apunten solos")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Theme.textMuted)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.textFaint)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     ServerSettingsCard()
 
                     Button(role: .destructive) {

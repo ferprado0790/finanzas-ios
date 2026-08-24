@@ -91,6 +91,7 @@ añade `/api`, y se asume `https` salvo que sea una dirección local.
 | `AnalysisPage.jsx` | `Features/Analysis/AnalysisView.swift` |
 | `ReportPage.jsx` | `Features/Reports/ReportView.swift` |
 | `BudgetCheckPage.jsx` | `Features/Budget/BudgetCheckView.swift` |
+| *(sin equivalente en la web)* | `Features/Bank/BankView.swift` |
 | `services/authService.js` | `Services/AuthService.swift` |
 | `services/apiService.js` | `Services/FinanceServices.swift` |
 | `context/AuthContext.js` | `Session/SessionStore.swift` |
@@ -115,6 +116,31 @@ Todos los de `finanzas-backend`, sin excepción:
 - `GET /api/budget/summary`, `POST /api/budget/check-expense`,
   `GET /api/budget/trend`, `GET|POST /api/budget/limits`, `GET /api/budget/report`
 - `GET|POST|PUT|DELETE /api/shopping-list`, `PATCH /api/shopping-list/{id}/toggle`
+
+---
+
+## Gastos de la tarjeta (PSD2)
+
+Ajustes → **Mi banco** conecta la cuenta a través de un agregador PSD2
+(GoCardless Bank Account Data) y los cargos de la tarjeta, los Bizum y los
+recibos aparecen solos en la bandeja de **Gastos detectados**, con un aviso en
+la pantalla de Gastos cuando hay algo sin repasar.
+
+> **iOS no puede leer los pagos del móvil.** No existe API para el historial de
+> Apple Pay, ni para los SMS del banco, ni para las notificaciones de otras
+> apps. `FinanceKit` (iOS 17.4+) sí lee movimientos, pero solo de Apple Card,
+> Apple Cash y Savings, que son productos de EE. UU., y además exige un
+> *entitlement* que Apple aprueba a mano. Por eso la detección vive en el
+> servidor, que se los pide al banco: un pago con Apple Pay y uno con la tarjeta
+> física son el mismo apunte para la entidad.
+
+La autenticación se hace en la web del propio banco, dentro de
+`ASWebAuthenticationSession`. La app **no pide, no ve y no guarda** credenciales
+bancarias; el permiso resultante es de solo lectura y caduca a los 90 días
+(lo obliga la PSD2). La pantalla avisa a partir de los 14 días restantes.
+
+Sin `GOCARDLESS_SECRET_ID` y `GOCARDLESS_SECRET_KEY` en el servidor, la pantalla
+lo dice y el resto de la app funciona igual.
 
 ---
 

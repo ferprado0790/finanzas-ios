@@ -5,6 +5,7 @@ import SwiftUI
 struct ExpenseView: View {
 
     @State private var vm = ExpenseViewModel()
+    @State private var bank = BankViewModel()
     @State private var showForm = false
     @State private var showQuickFood = false
     @State private var editingExpense: Expense?
@@ -27,6 +28,11 @@ struct ExpenseView: View {
                     }
 
                     if !vm.suggestions.isEmpty { recurringSuggestions }
+
+                    // Los cargos que ha detectado el banco. Va aquí y no
+                    // escondido en Ajustes porque es donde el usuario mira
+                    // cuando quiere saber qué ha gastado este mes.
+                    if bank.status.pendingMovements > 0 { detectedMovements }
 
                     categoryFilters
                     categoryBars
@@ -66,12 +72,18 @@ struct ExpenseView: View {
             .finanzBackground()
             .navigationTitle("Control de gastos")
             .navigationBarTitleDisplayMode(.large)
-            .refreshable { await vm.load() }
+            .refreshable {
+                await vm.load()
+                await bank.refreshQuietly()
+            }
         }
         .task(id: "\(vm.month)-\(vm.year)") {
             await vm.load()
             await vm.loadSuggestions()
         }
+        // Aparte del resto: si el banco no responde, la pantalla de gastos
+        // tiene que seguir funcionando igual.
+        .task { await bank.refreshQuietly() }
         .sheet(isPresented: $showForm) {
             ExpenseFormView(expense: editingExpense) { saved in
                 vm.upsert(saved)
@@ -90,6 +102,42 @@ struct ExpenseView: View {
     }
 
     // MARK: - Secciones
+
+    /// Cargos que ha traído el banco y todavía no se han repasado. No están
+    /// contados en el total de arriba, y decirlo evita el susto de ver un total
+    /// que no cuadra con lo que uno cree que ha gastado.
+    private var detectedMovements: some View {
+        NavigationLink {
+            CardMovementsView(vm: bank)
+        } label: {
+            Card(borderColor: Theme.info.opacity(0.35)) {
+                HStack(spacing: 12) {
+                    Image(systemName: "creditcard.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.info)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.info.opacity(0.13))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(bank.status.pendingMovements == 1
+                             ? "1 cargo detectado en el banco"
+                             : "\(bank.status.pendingMovements) cargos detectados en el banco")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Sin repasar · no cuentan en el total")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.textFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
 
     /// Gastos fijos que tocan este mes y aún no están apuntados. La gracia es
     /// poder meterlos todos de un toque en vez de volver a teclearlos.
